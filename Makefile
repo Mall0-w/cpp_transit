@@ -1,2 +1,2 @@
 transit: transit.cpp
-	g++ -std=c++17 transit.cpp -o transit
+	g++ -std=c++17 transit.cpp -o transit.exe

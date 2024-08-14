@@ -1,0 +1,7 @@
+verify transit time calculations are working (including wait time)
+
+find way to input time
+
+test with larger graphs
+
+more robust reutrn path (include actual times for waiting etc)

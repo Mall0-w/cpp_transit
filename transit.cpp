@@ -39,11 +39,11 @@ struct Connection {
 
 class Graph {
 private:
-    std::function<std::vector<std::string>(const std::string&, const std::string&, const std::chrono::minutes&)> searchAlgo;
+    std::function<std::pair<std::vector<std::string>, std::chrono::minutes>(const std::string&, const std::string&, const std::chrono::minutes&)> searchAlgo;
     std::unordered_map<std::string, Station> stations;
     std::unordered_map<std::string, std::vector<Connection>> adjacencyList;
 
-    std::vector<std::string> Dijkstra(const std::string& start, const std::string& end, 
+    std::pair<std::vector<std::string>, std::chrono::minutes> Dijkstra(const std::string& start, const std::string& end, 
                                       const std::chrono::minutes& startTime) {
         // Implement Dijkstra
         // Use the schedule to determine the best route based on the start time        
@@ -90,13 +90,15 @@ private:
                 //gets how long we will be waiting for next bus
                 auto wait_time = nextWaitTime(connection.schedule, 
                     startTime + curr->time_traveled);
-                    
+                
+                std::cout << "wait time: " << wait_time.count() << std::endl;
                 //gets travel time to next stop from here
                 //divide speed by 60 since its in km/h and we're measureing minutes
                 auto travel_time = std::chrono::minutes(static_cast<int>(connection.distance / (connection.average_speed/60)));
 
-                auto new_time = curr->time_traveled + wait_time + travel_time;
+                std::cout << "travel time " << travel_time.count() << std::endl;
 
+                auto new_time = curr->time_traveled + wait_time + travel_time;
                 if(currCon->time_traveled > new_time){
                     currCon->prev = curr;
                     currCon->time_traveled = new_time;
@@ -110,16 +112,26 @@ private:
         }
 
         //TODO unravel path traveled.
+        std::cout << "Unraveling path";
+        std::vector<std::string> path;
+        std::chrono::minutes travel_time = std::chrono::minutes(0);
+        if(curr != nullptr)
+            travel_time = curr->time_traveled;
 
-        return std::vector<std::string>();
+        while(curr != nullptr){
+            path.push_back(curr->s->name);
+            curr = curr->prev;
+        }
+        std::reverse(path.begin(), path.end());
+        return std::pair(path, travel_time);
     }
 
-    std::vector<std::string> aStarSearch(const std::string& start, const std::string& end, 
+    std::pair<std::vector<std::string>, std::chrono::minutes> aStarSearch(const std::string& start, const std::string& end, 
                                       const std::chrono::minutes& startTime) {
         // Implement A* algorithm here
         // Use the schedule to determine the best route based on the start time
         // Consider transfer times between different modes
-        return std::vector<std::string>();
+        return std::pair(std::vector<std::string>(), std::chrono::minutes(0));
     }
 
 public:
@@ -151,7 +163,7 @@ public:
         return 0;
     }
 
-    std::vector<std::string> findPath(const std::string& start, const std::string& end, 
+    std::pair<std::vector<std::string>, std::chrono::minutes> findPath(const std::string& start, const std::string& end, 
                                       const std::chrono::minutes& startTime) {
         return this->searchAlgo(start, end, startTime);
     }
@@ -219,14 +231,17 @@ int main() {
 
     std::string start, end;
     std::cout << "Enter start station: ";
-    std::cin >> start;
+    std::getline(std::cin, start);
     std::cout << "Enter end station: ";
-    std::cin >> end;
+    std::getline(std::cin, end);
+
 
     // Get current time
     auto now = std::chrono::system_clock::now();
 
-    std::vector<std::string> path = transitNetwork->findPath(start, end, Graph::getMinutesSinceMidnight(now));
+    std::pair<std::vector<std::string>, std::chrono::minutes> result = transitNetwork->findPath(start, end, Graph::getMinutesSinceMidnight(now));
+    std::vector<std::string> path = result.first;
+    std::chrono::minutes travel_time = result.second;
 
     std::cout << "Path found:\n";
     for (const auto& station : path) {
@@ -237,5 +252,6 @@ int main() {
     double fare = transitNetwork->calculateFare(path);
     std::cout << "Total fare: $" << fare << std::endl;
 
+    std::cout << "Travel time (minutes) " << travel_time.count() << std::endl;
     return 0;
 }
