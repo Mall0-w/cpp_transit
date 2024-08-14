@@ -29,7 +29,6 @@ struct Station {
 
 struct Connection {
     std::string to;
-    double distance; //km
     double average_speed = 60; //km/h
     std::string mode; // "bus", "train", "walk", etc.
     // std::unordered_map<std::string, std::chrono::minutes> schedule;
@@ -94,7 +93,8 @@ private:
                 std::cout << "wait time: " << wait_time.count() << std::endl;
                 //gets travel time to next stop from here
                 //divide speed by 60 since its in km/h and we're measureing minutes
-                auto travel_time = std::chrono::minutes(static_cast<int>(connection.distance / (connection.average_speed/60)));
+                double travel_distance = this->calculateDistance(curr->s->location, stations[connection.to].location);
+                auto travel_time = std::chrono::minutes(static_cast<int>(travel_distance / (connection.average_speed/60)));
 
                 std::cout << "travel time " << travel_time.count() << std::endl;
 
@@ -157,10 +157,44 @@ public:
         adjacencyList[from].push_back(connection);
     }
 
-    double calculateDistance(const Coordinates& a, const Coordinates& b) {
-        // Haversine formula for distance calculation
-        // ... (implement the formula here)
+    double calculateDistance(const Coordinates& c1, const Coordinates& c2) {
+        // distance between latitudes
+        // and longitudes
+        double lat1 = c1.lat;
+        double lon1 = c1.lon;
+        double lat2 = c2.lat;
+        double lon2 = c2.lon;
+
+        double dLat = (lat2 - lat1) * M_PI / 180.0;
+        double dLon = (lon2 - lon1) * M_PI / 180.0;
+ 
+        // convert to radians
+        lat1 = (lat1) * M_PI / 180.0;
+        lat2 = (lat2) * M_PI / 180.0;
+ 
+        // apply formulae
+        double a = pow(sin(dLat / 2), 2) + 
+                   pow(sin(dLon / 2), 2) * 
+                   cos(lat1) * cos(lat2);
+        double rad = 6371;
+        double c = 2 * asin(sqrt(a));
+        return rad * c;
         return 0;
+    }
+
+    double getTotalDistance(std::vector<std::string> path){
+        int distance_traveled = 0;
+        if(path.size() <= 1){
+            return 0;
+        }
+        //always looking towards next node
+        for(int i = 0; i < path.size() - 1; i++){
+            distance_traveled += calculateDistance(
+                stations[path[i]].location, stations[path[i+1]].location
+            );
+        }
+
+        return distance_traveled;
     }
 
     std::pair<std::vector<std::string>, std::chrono::minutes> findPath(const std::string& start, const std::string& end, 
@@ -216,13 +250,13 @@ int main() {
 
     // Add connections with schedules
 
-    transitNetwork->addConnection("Central Station", {"North Station", 5.2, 60, "bus", {
+    transitNetwork->addConnection("Central Station", {"North Station", 60, "bus", {
         get_time_point(8, 0),
         get_time_point(8, 30),
         get_time_point(9, 0)
     }});
 
-    transitNetwork->addConnection("North Station", {"East Station", 3.7, 45, "train", {
+    transitNetwork->addConnection("North Station", {"East Station", 45, "train", {
         get_time_point(8, 15),
         get_time_point(8,45),
         get_time_point(9, 15)
@@ -253,5 +287,7 @@ int main() {
     std::cout << "Total fare: $" << fare << std::endl;
 
     std::cout << "Travel time (minutes) " << travel_time.count() << std::endl;
+
+    std:: cout << "Distance Traveled (km) " << transitNetwork->getTotalDistance(path) << std::endl;
     return 0;
 }
